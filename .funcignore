@@ -1,0 +1,8 @@
+# Azure Functions ignore file
+.git
+.gitignore
+README.md
+test_local.py
+.vscode
+__pycache__
+*.pyc

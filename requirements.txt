@@ -1,0 +1,5 @@
+azure-functions
+azure-functions-worker
+agrobr
+geopandas
+shapely
