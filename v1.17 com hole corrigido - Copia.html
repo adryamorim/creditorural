@@ -68,6 +68,17 @@
         border-radius: 5px; 
         font-weight: 500;
     }
+
+    /* Estilo para mensagens de aviso (amarelo) */
+    .warning-message {
+        background: #fff8e1 !important;
+        color: #f57c00 !important;
+        border: 1px solid #ffb300 !important;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        font-weight: 500;
+    }
     
     /* Estilo para Tooltip de Extravasamento */
     .custom-extravasamento-tooltip { 
@@ -424,22 +435,37 @@
           </ul>
       </div>
 
-      <!-- NOVO: Busca de CAR por Código (Validação Ambiental) -->
-      <div id="car-search-controls" class="mb-8 p-4 border border-gray-200 rounded-lg shadow-sm bg-white">
-        <h3 class="text-xl font-semibold mb-4 text-gray-700">Consulta Ambiental</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div>
-            <label for="car-code-input" class="font-bold block mb-2 text-gray-700">Consultar CAR pelo código</label>
-            <input type="text" id="car-code-input" placeholder="Digite o código do CAR (ex: MT-XXXX)" class="p-2 border border-gray-300 rounded-md bg-white w-full" />
-          </div>
-          <div>
-            <button id="search-car-btn" class="w-full btn-highlight h-12">
-              <i class="ph-magnifying-glass"></i> Buscar CAR
+      <!-- Nova seção: Consultar CAR pelo código - MÚLTIPLOS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch mt-6">
+        <div class="md:col-span-1 input-file-group">
+          <label class="font-bold block mb-2 text-gray-700">
+            Consultar CAR pelo código - Múltiplos Suportados
+          </label>
+          <input type="text" id="car-code-input" placeholder="Ex: MS-XXXX, MT-YYYY" class="p-2 border border-gray-300 rounded-md bg-white w-full"/>
+        </div>
+        
+        <!-- Botão principal de Ação -->
+        <div class="flex items-end">
+            <button id="search-car-btn" class="w-full action-button-width btn-highlight h-12">
+               <i class="ph-search"></i> Buscar CARs
             </button>
-          </div>
-          <div id="car-search-status" class="text-sm text-gray-600"></div>
         </div>
       </div>
+
+      <!-- Área para listar os CARs carregados por código -->
+      <div id="code-car-list-container" class="mt-4 p-3 border border-gray-100 rounded-lg bg-gray-50 hidden">
+          <h4 class="font-semibold mb-2 text-gray-700 flex items-center">
+              <i class="ph-list-checks text-xl mr-2 text-green-600"></i> CARs por Código Carregados:
+          </h4>
+          <ul id="loaded-code-car-list" class="list-none ml-0 space-y-1 text-sm text-gray-600">
+              <li>Nenhum CAR carregado.</li>
+          </ul>
+      </div>
+
+      <!-- Botão Limpar CARs por Código -->
+      <button id="clear-code-car-btn" class="w-full md:w-48 btn-clear justify-start mt-2">
+         <i class="ph-trash"></i> Limpar CARs por Código
+      </button>
 
       <!-- Linha 2: Escolha Arquivo Glebas - Adicionado .xlsm -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
@@ -486,29 +512,6 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
 
     <!-- Container de Erros (ACIMA DO MAPA) -->
     <div id="error-container" class="mb-4"></div>
-
-    <!-- Resumo Ambiental (CAR + PRODES) -->
-    <div id="environmental-summary" class="mb-4 p-4 border border-gray-200 rounded-lg bg-white hidden">
-      <h4 class="font-semibold text-gray-700 mb-2">Resumo Ambiental</h4>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm text-gray-700">
-        <div>
-          <div class="text-xs text-gray-500">CAR</div>
-          <div id="env-car-area" class="font-semibold">—</div>
-        </div>
-        <div>
-          <div class="text-xs text-gray-500">Desmatamento PRODES</div>
-          <div id="env-prodes-area" class="font-semibold">—</div>
-        </div>
-        <div>
-          <div class="text-xs text-gray-500">Percentual</div>
-          <div id="env-prodes-percent" class="font-semibold">—</div>
-        </div>
-        <div>
-          <div class="text-xs text-gray-500">Situação</div>
-          <div id="env-compliance-message" class="font-semibold">—</div>
-        </div>
-      </div>
-    </div>
     
     <!-- Mensagem de Aviso sobre Reordenação de Glebas -->
     <div id="reorder-warning-container" class="mb-4" style="display: none;">
@@ -560,6 +563,11 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
 
       <button id="export-glebas-btn" class="w-full md:w-auto btn-highlight">
         <i class="ph-download-simple"></i> Exportar Glebas
+      </button>
+
+      <!-- BOTÃO: Análise Ambiental -->
+      <button id="show-environmental-modal-btn" class="w-full md:w-auto bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled title="Mostrar análise ambiental dos CARs carregados">
+        <i class="ph-tree-fill"></i> Análise Ambiental
       </button>
     </div>
 
@@ -638,6 +646,10 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
       <p><span class="legend-color" style="background-color: #ffd700; opacity: 0.35;"></span> CAR (Amarelo Transparente)</p>
       <p><span class="legend-color" style="background-color: #ff0000; opacity: 0.8;"></span> Cruzamento/Sobreposição</p>
       <p><span class="legend-color" style="background-color: #ff0000; opacity: 0.9; border: 1px dashed white;"></span> Extravasamento da Gleba (Fora do CAR)</p>
+      <p><span class="legend-color" style="background-color: #ffff00; opacity: 0.8;"></span> CAR por Código (Amarelo)</p>
+      <p><span class="legend-color" style="background-color: #ff0000; opacity: 0.8;"></span> PRODES (Vermelho)</p>
+      <p><span class="legend-color" style="background-color: #008000; opacity: 0.8;"></span> Florestas Públicas (Verde)</p>
+      <p><span class="legend-color" style="background-color: #0000ff; opacity: 0.8;"></span> Unidades de Conservação (Azul)</p>
     </div>
 
     <!-- Modal de Exportação -->
@@ -649,6 +661,27 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
         <!-- Botão fechar em cinza (bg-gray-500) -->
         <button id="close-modal" class="bg-gray-500 hover:bg-gray-700 mt-4">Fechar</button>
       </div>
+    </div>
+
+    <!-- Modal de Análise Ambiental -->
+    <div id="environmental-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 900px; width: 95%;">
+            <header class="report-header flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="ph-tree text-2xl mr-2 text-green-600"></i>
+                    <h3 class="text-xl font-bold text-gray-800">Análise Ambiental</h3>
+                </div>
+                <button id="close-environmental-modal" class="text-gray-500 hover:text-gray-700 transition-colors" style="font-size: 28px; line-height: 1; padding: 4px 8px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="ph ph-x" style="font-weight: bold;"></i>
+                </button>
+            </header>
+            
+            <div class="report-body">
+                <div id="environmental-content">
+                    <!-- Conteúdo será injetado via JavaScript -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal de Correção de Fechamento -->
@@ -810,7 +843,7 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
   <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
   <!-- Turf.js para operações de geometria espacial (intersecção, contenção) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
-  <script src="environmental-validation.js"></script>
+  
 
   <script>
     // --- Variáveis Globais de Estado ---
@@ -866,6 +899,54 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
     const crossingCorrectionAttempts = new Map(); // glebaIndex -> tentativas
     // Rastreia glebas excluídas por anel externo inválido (<3 pontos)
     let glebasInvalidRing = [];
+
+    // Novas variáveis para análise ambiental
+    let carCodeLayers = []; // Camadas CAR carregadas por código
+    let carCodes = []; // Códigos dos CARs carregados
+    let carCodeFeatures = []; // Features dos CARs carregados
+    let carProperties = []; // Propriedades dos CARs carregados
+    let prodesLayers = []; // Camadas PRODES
+    let publicForestLayers = []; // Florestas públicas
+    let ucLayers = []; // Unidades de conservação
+    let mmaData = {}; // Dados MMA carregados
+    let mmaDataLoaded = false; // Indica se os dados MMA já foram carregados
+    let mmaDataPromise = null; // Promise de carregamento dos dados MMA
+
+    // URLs de fontes de dados MMA/PRODES (webfile + local fallback)
+    const MMA_DATA_URLS = [
+        'https://validadorbrde.com.br/webfile/carprodes',
+        './mma_index.json'
+    ];
+
+    // Dados hardcoded para testes de sobreposição / PRODES (sempre em formato normalizado sem pontos)
+    const HARD_CODED_PRODES_DATA = {
+        'MS-5006903-20653795E9D942A39F0AC0227622148F': {
+            resultados: 'CERRADO',
+            dentro_tolerancia: 'VERDADEIRO',
+            tolerancia_aplicada: 'N/A',
+            bioma: 'CERRADO'
+        },
+        'SC-4219705-596DE308889B431BA4058040E2D21CA4': {
+            resultados: 'Supressão de vegetação em 2021.',
+            dentro_tolerancia: 'FALSO',
+            tolerancia_aplicada: 'MATA ATLÂNTICA',
+            bioma: 'MATA ATLÂNTICA'
+        },
+        'MS-003003-0C0C9A7D5A1234567890ABCDEF123456': {
+            resultados: 'CERRADO',
+            dentro_tolerancia: 'VERDADEIRO',
+            tolerancia_aplicada: 'N/A',
+            bioma: 'CERRADO'
+        }
+    };
+
+    const HARD_CODED_OVERLAP_CARS = [
+        'MS-5006903-20653795E9D942A39F0AC0227622148F',
+        'SC-4219705-596DE308889B431BA4058040E2D21CA4',
+        'MS-003003-0C0C9A7D5A1234567890ABCDEF123456'
+    ];
+
+    let layerControl = null; // Controle de camadas
     
     let contractData = {
       agencia: '',
@@ -959,6 +1040,944 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
     // Variáveis que armazenarão os ícones (inicializadas em initializeMap)
     let DefaultPinIcon;
     let DeletePinIcon;
+
+    // --- FUNÇÕES PARA ANÁLISE AMBIENTAL ---
+
+    // Carregar dados MMA
+    async function loadMMAData() {
+        console.log('loadMMAData: location=', window.location.href, 'protocol=', window.location.protocol);
+        if (window.location.protocol === 'file:') {
+            console.warn('A página está sendo servida via file://; isso pode impedir o fetch de arquivos locais (mma_index.json) por motivos de segurança do navegador. Use um servidor local (ex: python -m http.server) ou abra via http://localhost.');
+        }
+
+        try {
+            let loaded = false;
+            for (const url of MMA_DATA_URLS) {
+                try {
+                    console.log('Tentando carregar MMA/PRODES de', url);
+                    const response = await fetch(url);
+                    console.log('Resposta do fetch:', response.status, response.statusText, response.url);
+                    if (!response.ok) {
+                        console.warn(`Não foi possível carregar MMA/PRODES de ${url}: ${response.status} ${response.statusText}`);
+                        continue;
+                    }
+
+                    const rawData = await response.json();
+                    // Normalizar chaves para facilitar consultas
+                    mmaData = {};
+                    Object.keys(rawData).forEach(key => {
+                        const normalizedKey = normalizeCarCode(key);
+                        mmaData[normalizedKey] = rawData[key];
+                    });
+
+                    const keys = Object.keys(mmaData);
+                    console.log('Dados PRODES carregados de', url, '(', keys.length, 'registros )');
+                    console.log('Exemplos de chaves PRODES (primeiras 10):', keys.slice(0, 10));
+                    loaded = true;
+                    break;
+                } catch (innerError) {
+                    console.warn(`Erro ao carregar MMA/PRODES de ${url}:`, innerError.name, innerError.message, innerError);
+                    if (url.startsWith('.') && window.location.protocol === 'file:') {
+                        console.warn('Observação: fetch de arquivos locais via file:// geralmente falha no navegador. Inicie um servidor local e acesse via http://localhost para evitar isso.');
+                    }
+                }
+            }
+
+            if (!loaded) {
+                console.warn('Não foi possível carregar dados MMA/PRODES de nenhuma fonte. Usando dados hardcoded para testes.');
+                mmaData = { ...HARD_CODED_PRODES_DATA };
+            }
+        } catch (error) {
+            console.warn('Erro ao carregar dados PRODES:', error);
+            mmaData = { ...HARD_CODED_PRODES_DATA };
+        } finally {
+            mmaDataLoaded = true;
+        }
+    }
+
+    // Buscar CAR por código - Suporta múltiplos
+    async function searchCarByCode() {
+        const carCodeInput = document.getElementById('car-code-input').value.trim();
+        if (!carCodeInput) {
+            alert('Digite um ou mais códigos de CAR válidos.');
+            return;
+        }
+
+        // Separar códigos por vírgula e limpar espaços
+        const carCodesInput = carCodeInput.split(',').map(code => code.trim().toUpperCase()).filter(code => code);
+
+        if (carCodesInput.length === 0) {
+            alert('Digite pelo menos um código de CAR válido.');
+            return;
+        }
+
+        // Garantir que os dados PRODES foram carregados antes de iniciar análise
+        if (mmaDataPromise) {
+            await mmaDataPromise;
+        }
+
+        try {
+            // Mostrar loading
+            document.getElementById('search-car-btn').disabled = true;
+            document.getElementById('search-car-btn').innerHTML = '<i class="ph-spinner ph-spin"></i> Buscando CARs...';
+
+            const newCarLayers = [];
+            const newCarCodes = [];
+
+            for (const carCode of carCodesInput) {
+                const normalizedCode = normalizeCarCode(carCode);
+
+                // Verificar se já foi carregado
+                if (carCodes.includes(normalizedCode)) {
+                    console.log(`CAR ${normalizedCode} já carregado, pulando.`);
+                    continue;
+                }
+
+                try {
+                    const carData = await fetchSingleCar(normalizedCode);
+                    if (carData) {
+                        newCarLayers.push(carData.layer);
+                        newCarCodes.push(normalizedCode);
+                        carCodes.push(normalizedCode);
+                        carCodeLayers.push(carData.layer);
+                        carCodeFeatures.push(carData.feature);
+                        carProperties.push(carData.properties);
+                    }
+                } catch (error) {
+                    console.error(`Erro ao buscar CAR ${normalizedCode}:`, error);
+                    alert(`Erro ao buscar CAR ${normalizedCode}. Verifique o código e tente novamente.`);
+                }
+            }
+
+            if (newCarLayers.length > 0) {
+                // Calcular BBOX combinado usando os features diretamente
+                console.log('Features para BBOX:', carCodeFeatures);
+                
+                // Calcular BBOX de cada feature e combinar
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                
+                carCodeFeatures.forEach(feature => {
+                    try {
+                        const bbox = turf.bbox(feature);
+                        console.log('BBOX do feature:', bbox);
+                        minX = Math.min(minX, bbox[0]);
+                        minY = Math.min(minY, bbox[1]);
+                        maxX = Math.max(maxX, bbox[2]);
+                        maxY = Math.max(maxY, bbox[3]);
+                    } catch (error) {
+                        console.error('Erro ao calcular BBOX do feature:', error, feature);
+                    }
+                });
+                
+                const combinedBbox = [minX, minY, maxX, maxY];
+                console.log('BBOX combinado:', combinedBbox);
+
+                // Buscar dados ambientais com BBOX combinado
+                await fetchEnvironmentalDataCombined(combinedBbox);
+
+                // Atualizar mapa e controles
+                updateCarCodeList();
+                addLayerControl();
+
+                // Ajustar mapa para mostrar todos os CARs
+                const allLayers = L.featureGroup(carCodeLayers);
+                map.fitBounds(allLayers.getBounds());
+
+                // Habilitar botão de análise ambiental
+                document.getElementById('show-environmental-modal-btn').disabled = false;
+
+                // Mensagem de sucesso
+                document.getElementById('top-message-container').innerHTML = 
+                    `<div class="success-message">
+                      <i class="ph-check-circle-fill"></i> ${newCarLayers.length} CAR(s) carregado(s) com sucesso.
+                    </div>`;
+            }
+
+            // Limpar input após busca
+            document.getElementById('car-code-input').value = '';
+
+        } catch (error) {
+            console.error('Erro geral ao buscar CARs:', error);
+            alert('Erro ao buscar CARs. Verifique os códigos e tente novamente.');
+        } finally {
+            document.getElementById('search-car-btn').disabled = false;
+            document.getElementById('search-car-btn').innerHTML = '<i class="ph-search"></i> Buscar CARs';
+        }
+    }
+
+    // Normaliza código CAR: remove pontos e traços extras e garante formato 'UF-XXXXXXX-...'
+    function normalizeCarCode(carCode) {
+        if (!carCode || typeof carCode !== 'string') return carCode;
+        const cleaned = carCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (cleaned.length < 3) return carCode;
+
+        const state = cleaned.slice(0, 2);
+        const rest = cleaned.slice(2);
+        const code1 = rest.slice(0, 7);
+        const code2 = rest.slice(7);
+
+        if (!code1) return carCode;
+        return `${state}-${code1}-${code2}`;
+    }
+
+    // Limpa geometria para evitar erros de validação do Turf (ex: geometrias inválidas ou auto-intersectantes)
+    function cleanGeometry(geometry) {
+        try {
+            // Tenta limpar coordenadas e simplificar para evitar topologias inválidas
+            let cleaned = turf.cleanCoords(geometry);
+            cleaned = turf.simplify(cleaned, { tolerance: 1e-6, highQuality: true });
+            return cleaned;
+        } catch (error) {
+            // Se não for possível limpar, retorna original
+            return geometry;
+        }
+    }
+
+    // Converte um bioma (texto) em nome de camada PRODES correta
+    function getProdesLayerNameFromBioma(bioma) {
+        if (!bioma || typeof bioma !== 'string') return null;
+        const normalized = bioma.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z-]/g, '');
+        const mapping = {
+            'cerrado': 'prodes-cerrado-nb',
+            'pantanal': 'prodes-pantanal',
+            'mata-atlantica': 'prodes-mata-atlantica',
+            'amazonia': 'prodes-amazonia'
+        };
+        return mapping[normalized] || null;
+    }
+
+    // Retorna o bbox no formato usado pelo WFS (inclui EPSG)
+    function getBboxParamFromFeature(feature) {
+        const [minx, miny, maxx, maxy] = turf.bbox(feature);
+        return `${minx},${miny},${maxx},${maxy},EPSG:4326`;
+    }
+
+    // Tenta calcular área de interseção entre duas geometrias, com tentativas de "limpeza".
+    function safeIntersectionArea(featureA, featureB) {
+        try {
+            const cleanedA = cleanGeometry(featureA);
+            const cleanedB = cleanGeometry(featureB);
+
+            let intersection = turf.intersect(cleanedA, cleanedB);
+            if (!intersection) {
+                // Tentativa extra: aplicar buffer pequeno para forçar polígonos
+                const bufferedA = turf.buffer(cleanedA, 0.0001);
+                const bufferedB = turf.buffer(cleanedB, 0.0001);
+                intersection = turf.intersect(bufferedA, bufferedB);
+            }
+
+            if (!intersection) {
+                // Fallback final: calcular interseção de bboxes (menos preciso, mas robusto)
+                try {
+                    const bboxA = turf.bboxPolygon(turf.bbox(cleanedA));
+                    const bboxB = turf.bboxPolygon(turf.bbox(cleanedB));
+                    const bboxIntersection = turf.intersect(bboxA, bboxB);
+                    if (bboxIntersection) {
+                        return turf.area(bboxIntersection) / 10000;
+                    }
+                } catch (bboxError) {
+                    console.warn('safeIntersectionArea fallback de bbox falhou:', bboxError);
+                }
+                return 0;
+            }
+
+            return turf.area(intersection) / 10000;
+        } catch (error) {
+            console.warn('safeIntersectionArea falhou:', error);
+            return 0;
+        }
+    }
+
+    // Buscar PRODES específico para o CAR (usa bioma do JSON e bbox do CAR)
+    async function fetchProdesForCar(feature, prodesData) {
+        const bioma = prodesData && prodesData.bioma ? prodesData.bioma : null;
+        const layerName = getProdesLayerNameFromBioma(bioma) || 'prodes-cerrado-nb';
+        const bboxParam = getBboxParamFromFeature(feature);
+        const cqlFilter = 'year>=2019 AND year<=2025';
+
+        const baseUrl = `https://terrabrasilis.dpi.inpe.br/geoserver/${layerName}/ows`;
+        const wfsUrl = `${baseUrl}?service=WFS&version=1.0.0&request=GetFeature&typeName=${layerName}:yearly_deforestation&outputFormat=application/json&bbox=${bboxParam}&srsName=EPSG:4326&CQL_FILTER=${encodeURIComponent(cqlFilter)}`;
+
+        try {
+            console.log('Buscando PRODES por CAR (bioma):', bioma, wfsUrl);
+            let response = await fetch(wfsUrl);
+            if (!response.ok) {
+                const altUrl = wfsUrl.replace('outputFormat=application/json', 'outputFormat=application/json; subtype=geojson');
+                console.log('Tentando PRODES alternativa:', altUrl);
+                response = await fetch(altUrl);
+            }
+
+            if (!response.ok) {
+                console.warn('Falha ao buscar PRODES por CAR:', response.status, response.statusText);
+                return null;
+            }
+
+            const geojson = await response.json();
+            if (geojson.features && geojson.features.length > 0) {
+                const layer = L.geoJSON(geojson, {
+                    style: { color: '#ff0000', weight: 1, fillOpacity: 0.8 },
+                    onEachFeature: (feat, layer) => {
+                        layer.bindPopup(`<b>PRODES ${bioma || 'N/A'}</b><br>Ano: ${feat.properties.year}<br>Área: ${feat.properties.area_ha} ha`);
+                    }
+                });
+                prodesLayers.push(layer);
+                return geojson;
+            }
+        } catch (error) {
+            console.warn('Erro ao buscar PRODES por CAR:', error);
+        }
+        return null;
+    }
+
+    // Buscar um único CAR
+    async function fetchSingleCar(carCode) {
+        const normalizedCode = normalizeCarCode(carCode);
+
+        // Detectar estado a partir do código
+        const state = normalizedCode.split('-')[0];
+        if (!state || state.length !== 2) {
+            throw new Error('Estado não suportado ou código inválido.');
+        }
+
+        // Suporta qualquer estado; assume camada padrão do geoserver com nome sicar_imoveis_<uf>
+        const layerName = `sicar_imoveis_${state.toLowerCase()}`;
+
+        // Construir URL WFS
+        const wfsUrl = `https://geoserver.car.gov.br/geoserver/sicar/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=sicar:${layerName}&outputFormat=application/json&CQL_FILTER=cod_imovel='${normalizedCode}'`;
+
+        console.log('Buscando CAR:', wfsUrl);
+
+        const response = await fetch(wfsUrl);
+        if (!response.ok) {
+            throw new Error(`Erro na requisição: ${response.status}`);
+        }
+
+        const geojson = await response.json();
+        console.log('Resposta CAR:', geojson);
+
+        if (!geojson.features || geojson.features.length === 0) {
+            throw new Error('CAR não encontrado.');
+        }
+
+        const carFeature = geojson.features[0];
+        
+        // Validar se o feature tem geometria válida
+        if (!carFeature.geometry || !carFeature.geometry.coordinates) {
+            console.error('Feature CAR inválido:', carFeature);
+            throw new Error('CAR encontrado, mas sem geometria válida.');
+        }
+
+        console.log('Feature CAR válido:', carFeature);
+        console.log('Geometria:', carFeature.geometry);
+        console.log('Tipo de geometria:', carFeature.geometry.type);
+        console.log('Coordenadas:', carFeature.geometry.coordinates);
+
+        // Verificar se é uma geometria suportada
+        if (carFeature.geometry.type !== 'Polygon' && carFeature.geometry.type !== 'MultiPolygon') {
+            console.warn('Tipo de geometria não suportado:', carFeature.geometry.type);
+            throw new Error(`Tipo de geometria não suportado: ${carFeature.geometry.type}`);
+        }
+        
+        // Adicionar ao mapa
+        const layer = L.geoJSON(carFeature, {
+            style: { color: '#ffff00', weight: 2, fillOpacity: 0.8 },
+            onEachFeature: (feature, layer) => {
+                layer.bindPopup(`<b>CAR: ${carCode}</b>`);
+            }
+        }).addTo(map);
+
+        return { layer, feature: carFeature, properties: carFeature.properties };
+    }
+
+    // Buscar dados ambientais com BBOX combinado
+    async function fetchEnvironmentalDataCombined(bbox) {
+        const [minx, miny, maxx, maxy] = bbox;
+        const bboxParam = `${minx},${miny},${maxx},${maxy},EPSG:4326`;
+
+        console.log('BBOX combinado:', bboxParam);
+
+        try {
+            // Limpar camadas antigas para nova análise
+            clearEnvironmentalData();
+
+            // Buscar Florestas Públicas
+            await fetchPublicForests(bboxParam);
+
+            // Buscar Unidades de Conservação
+            await fetchConservationUnits(bboxParam);
+
+            // Calcular métricas e mostrar modal (inclui consulta PRODES por CAR)
+            await calculateEnvironmentalMetricsCombined();
+            showEnvironmentalModal();
+
+            // Adicionar controle de camadas
+            addLayerControl();
+
+        } catch (error) {
+            console.error('Erro ao buscar dados ambientais:', error);
+        }
+    }
+
+    // Atualizar lista de CARs por código
+    function updateCarCodeList() {
+        const container = document.getElementById('code-car-list-container');
+        const list = document.getElementById('loaded-code-car-list');
+
+        if (carCodes.length > 0) {
+            container.classList.remove('hidden');
+            list.innerHTML = carCodes.map(code => `<li>${code}</li>`).join('');
+        } else {
+            container.classList.add('hidden');
+            list.innerHTML = '<li>Nenhum CAR carregado.</li>';
+        }
+    }
+
+    // Limpar CARs por código
+    function clearCodeCars() {
+        // Remover camadas do mapa
+        carCodeLayers.forEach(layer => map.removeLayer(layer));
+        
+        // Limpar arrays
+        carCodeLayers = [];
+        carCodes = [];
+        carCodeFeatures = [];
+        carProperties = [];
+        
+        // Limpar dados ambientais
+        clearEnvironmentalData();
+        
+        // Atualizar lista
+        updateCarCodeList();
+        
+        // Atualizar controles
+        addLayerControl();
+        
+        // Desabilitar botão de análise ambiental
+        document.getElementById('show-environmental-modal-btn').disabled = true;
+        
+        // Mensagem
+        document.getElementById('top-message-container').innerHTML = 
+            `<div class="success-message">
+              <i class="ph-check-circle-fill"></i> CARs por código removidos.
+            </div>`;
+    }
+
+    // Limpar dados ambientais
+    function clearEnvironmentalData() {
+        prodesLayers.forEach(layer => map.removeLayer(layer));
+        publicForestLayers.forEach(layer => map.removeLayer(layer));
+        ucLayers.forEach(layer => map.removeLayer(layer));
+        
+        prodesLayers = [];
+        publicForestLayers = [];
+        ucLayers = [];
+    }
+
+    // Buscar PRODES
+    async function fetchPRODES(bbox) {
+        // Limpar camadas anteriores
+        prodesLayers.forEach(layer => map.removeLayer(layer));
+        prodesLayers = [];
+
+        const biomes = ['cerrado', 'pantanal', 'mata-atlantica', 'amazonia'];
+        const biomeLayers = {
+            'cerrado': 'prodes-cerrado-nb',
+            'pantanal': 'prodes-pantanal',
+            'mata-atlantica': 'prodes-mata-atlantica',
+            'amazonia': 'prodes-amazonia'
+        };
+
+        for (const biome of biomes) {
+            try {
+                const layerName = biomeLayers[biome];
+                const bboxCoords = bbox.replace(',EPSG:4326', '');
+                const wfsUrl = `https://terrabrasilis.dpi.inpe.br/geoserver/${layerName}/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${layerName}:yearly_deforestation&outputFormat=application/json&bbox=${bboxCoords}&srsName=EPSG:4326&CQL_FILTER=year>=2019 AND year<=2025`;
+
+                console.log(`Buscando PRODES ${biome}:`, wfsUrl);
+
+                let response = await fetch(wfsUrl);
+                console.log(`Resposta PRODES ${biome}:`, response.status);
+
+                if (!response.ok) {
+                    // Tentar com subtype=geojson
+                    const altUrl = wfsUrl.replace('outputFormat=application/json', 'outputFormat=application/json; subtype=geojson');
+                    console.log(`Tentando alternativa para PRODES ${biome}:`, altUrl);
+                    response = await fetch(altUrl);
+                    console.log(`Resposta alternativa PRODES ${biome}:`, response.status);
+                }
+
+                if (response.ok) {
+                    const geojson = await response.json();
+                    console.log(`GeoJSON PRODES ${biome}:`, geojson);
+
+                    if (geojson.features && geojson.features.length > 0) {
+                        const layer = L.geoJSON(geojson, {
+                            style: { color: '#ff0000', weight: 1, fillOpacity: 0.8 },
+                            onEachFeature: (feature, layer) => {
+                                layer.bindPopup(`<b>PRODES ${biome.toUpperCase()}</b><br>Ano: ${feature.properties.year}<br>Área: ${feature.properties.area_ha} ha`);
+                            }
+                        });
+                        prodesLayers.push(layer);
+                        console.log(`Adicionado ${geojson.features.length} features PRODES ${biome}`);
+                    } else {
+                        console.log(`Nenhum feature encontrado para PRODES ${biome}`);
+                    }
+                } else {
+                    console.warn(`Erro na resposta PRODES ${biome}:`, response.status, response.statusText);
+                }
+            } catch (error) {
+                console.warn(`Erro ao buscar PRODES ${biome}:`, error);
+            }
+        }
+    }
+
+    // Buscar Florestas Públicas
+    async function fetchPublicForests(bbox) {
+        // Limpar camadas anteriores
+        publicForestLayers.forEach(layer => map.removeLayer(layer));
+        publicForestLayers = [];
+
+        try {
+            const bboxCoords = bbox.replace(',EPSG:4326', '');
+            const wfsUrl = `https://sistemas.florestal.gov.br/geoserver/snif/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=snif:cnfp_2024&outputFormat=application/json&bbox=${bboxCoords}&srsName=EPSG:4326`;
+
+            console.log('Buscando Florestas Públicas:', wfsUrl);
+
+            let response = await fetch(wfsUrl);
+            console.log('Resposta Florestas Públicas:', response.status);
+
+            if (!response.ok) {
+                // Tentar com subtype=geojson
+                const altUrl = wfsUrl.replace('outputFormat=application/json', 'outputFormat=application/json; subtype=geojson');
+                console.log('Tentando alternativa para Florestas Públicas:', altUrl);
+                response = await fetch(altUrl);
+                console.log('Resposta alternativa Florestas Públicas:', response.status);
+            }
+
+            if (response.ok) {
+                const geojson = await response.json();
+                console.log('GeoJSON Florestas Públicas:', geojson);
+
+                if (geojson.features && geojson.features.length > 0) {
+                    const layer = L.geoJSON(geojson, {
+                        style: { color: '#008000', weight: 1, fillOpacity: 0.8 },
+                        onEachFeature: (feature, layer) => {
+                            layer.bindPopup(`<b>Floresta Pública</b><br>${feature.properties.nome || 'Nome não disponível'}`);
+                        }
+                    });
+                    publicForestLayers.push(layer);
+                    console.log(`Adicionado ${geojson.features.length} features Florestas Públicas`);
+                } else {
+                    console.log('Nenhum feature encontrado para Florestas Públicas');
+                }
+            } else {
+                console.warn('Erro na resposta Florestas Públicas:', response.status, response.statusText);
+            }
+        } catch (error) {
+            console.warn('Erro ao buscar florestas públicas:', error);
+        }
+    }
+
+    // Buscar Unidades de Conservação
+    async function fetchConservationUnits(bbox) {
+        // Limpar camadas anteriores
+        ucLayers.forEach(layer => map.removeLayer(layer));
+        ucLayers = [];
+
+        try {
+            const bboxCoords = bbox.replace(',EPSG:4326', '');
+            const wfsUrl = `https://geoservicos.inde.gov.br/geoserver/ICMBio/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ICMBio:limiteucsfederais_a&outputFormat=application/json&bbox=${bboxCoords}&srsName=EPSG:4326`;
+
+            console.log('Buscando Unidades de Conservação:', wfsUrl);
+
+            let response = await fetch(wfsUrl);
+            console.log('Resposta Unidades de Conservação:', response.status);
+
+            if (!response.ok) {
+                // Tentar com subtype=geojson
+                const altUrl = wfsUrl.replace('outputFormat=application/json', 'outputFormat=application/json; subtype=geojson');
+                console.log('Tentando alternativa para Unidades de Conservação:', altUrl);
+                response = await fetch(altUrl);
+                console.log('Resposta alternativa Unidades de Conservação:', response.status);
+            }
+
+            if (response.ok) {
+                const geojson = await response.json();
+                console.log('GeoJSON Unidades de Conservação:', geojson);
+
+                if (geojson.features && geojson.features.length > 0) {
+                    const layer = L.geoJSON(geojson, {
+                        style: { color: '#0000ff', weight: 1, fillOpacity: 0.8 },
+                        onEachFeature: (feature, layer) => {
+                            layer.bindPopup(`<b>Unidade de Conservação</b><br>${feature.properties.nome || 'Nome não disponível'}`);
+                        }
+                    });
+                    ucLayers.push(layer);
+                    console.log(`Adicionado ${geojson.features.length} features Unidades de Conservação`);
+                } else {
+                    console.log('Nenhum feature encontrado para Unidades de Conservação');
+                }
+            } else {
+                console.warn('Erro na resposta Unidades de Conservação:', response.status, response.statusText);
+            }
+        } catch (error) {
+            console.warn('Erro ao buscar unidades de conservação:', error);
+        }
+    }
+
+    // Calcular métricas ambientais para todos os CARs (usa dados PRODES por CAR/bioma)
+    function calculateEnvironmentalMetricsCombined() {
+        if (carCodeFeatures.length === 0) return Promise.resolve();
+
+        const mmaKeysCount = Object.keys(mmaData || {}).length;
+        console.log('calculateEnvironmentalMetricsCombined: mmaDataLoaded=', mmaDataLoaded, 'mmaData keys count=', mmaKeysCount);
+        if (!mmaDataLoaded || mmaKeysCount === 0) {
+            console.warn('Atenção: os dados MMA/PRODES não foram carregados ou estão vazios. Verifique a carga de mma_index.json e o console para mais detalhes.');
+        }
+
+        let totalCarArea = 0;
+        let totalDeforestationArea = 0;
+
+        const carPromises = carCodeFeatures.map((feature, index) => {
+            return new Promise(resolve => {
+                const carCode = carCodes[index];
+                const normalizedCode = normalizeCarCode(carCode);
+                const carArea = turf.area(feature) / 10000; // em hectares
+                totalCarArea += carArea;
+
+                let carDeforestationArea = 0;
+                let prodesData = null;
+
+                // Procurar dados PRODES no JSON (usando código normalizado)
+                if (mmaData[normalizedCode]) {
+                    prodesData = mmaData[normalizedCode];
+                } else {
+                    // Procurar por chave que começa com normalizedCode
+                    const prodesKey = Object.keys(mmaData).find(key => key.startsWith(normalizedCode));
+                    if (prodesKey) {
+                        prodesData = mmaData[prodesKey];
+                    }
+                }
+
+                if (!prodesData) {
+                    const sampleKeys = Object.keys(mmaData).slice(0, 10);
+                    const possibleMatches = Object.keys(mmaData).filter(key => key.includes(normalizedCode));
+                    console.warn('CAR não encontrado no JSON. Chave normalizada:', normalizedCode);
+                    console.warn('  - Exemplos de chaves no JSON:', sampleKeys);
+                    console.warn('  - Possíveis correspondências (contendo a chave normalizada):', possibleMatches.slice(0, 5));
+                }
+
+                console.log('PRODES data for', carCode, '(normalized:', normalizedCode, '):', prodesData);
+
+                const processMetrics = (prodesGeoJSON) => {
+                    if (prodesGeoJSON && prodesGeoJSON.features) {
+                        prodesGeoJSON.features.forEach(prodesFeature => {
+                            carDeforestationArea += safeIntersectionArea(feature, prodesFeature);
+                        });
+                    }
+
+                    // Verificar interseção com UC
+                    let hasUC = false;
+                    const cleanedFeatureForOverlap = cleanGeometry(feature);
+                    ucLayers.forEach(ucLayer => {
+                        const ucGeom = ucLayer.toGeoJSON();
+                        try {
+                            const cleanedUcGeom = cleanGeometry(ucGeom);
+                            if (turf.booleanIntersects(cleanedFeatureForOverlap, cleanedUcGeom)) {
+                                hasUC = true;
+                            }
+                        } catch (error) {
+                            console.warn('Erro ao calcular interseção UC:', error);
+                        }
+                    });
+
+                    // Verificar interseção com Florestas Públicas
+                    let hasPublicForest = false;
+                    publicForestLayers.forEach(pfLayer => {
+                        const pfGeom = pfLayer.toGeoJSON();
+                        try {
+                            const cleanedPfGeom = cleanGeometry(pfGeom);
+                            if (turf.booleanIntersects(cleanedFeatureForOverlap, cleanedPfGeom)) {
+                                hasPublicForest = true;
+                            }
+                        } catch (error) {
+                            console.warn('Erro ao calcular interseção Florestas Públicas:', error);
+                        }
+                    });
+
+                    const hasOverlap = carDeforestationArea > 0 || hasUC || hasPublicForest;
+                    const deforestationPercent = carArea > 0 ? (carDeforestationArea / carArea) * 100 : 0;
+
+                    const prodesHasSuppression = prodesData && (
+                        (prodesData.resultados && /SUPRESSAO|SUPRESSÃO|DESMATAMENTO|ABERTURA/i.test(prodesData.resultados)) ||
+                        (prodesData.dentro_tolerancia && /FALSO|FALSE|N/i.test(prodesData.dentro_tolerancia)) ||
+                        (prodesData.soma_desmat && Number(prodesData.soma_desmat) > 0)
+                    );
+
+                    resolve({
+                        code: carCode,
+                        area: carArea,
+                        deforestationArea: carDeforestationArea,
+                        deforestationPercent: deforestationPercent,
+                        prodesData: prodesData,
+                        prodesHasSuppression: prodesHasSuppression,
+                        hasUC: hasUC,
+                        hasPublicForest: hasPublicForest,
+                        hasOverlap: hasOverlap,
+                        properties: carProperties[index]
+                    });
+                };
+
+                if (!prodesData) {
+                    console.warn('Nenhum dado PRODES encontrado no JSON para', carCode, '; pulando consulta ao endpoint.');
+                    processMetrics(null);
+                } else {
+                    fetchProdesForCar(feature, prodesData)
+                        .then(processMetrics)
+                        .catch(error => {
+                            console.warn('Erro ao buscar PRODES por CAR:', error);
+                            processMetrics(null);
+                        });
+                }
+            });
+        });
+
+        return Promise.all(carPromises).then(carMetrics => {
+            // Calcular totais após todas as promessas
+            totalDeforestationArea = carMetrics.reduce((sum, car) => sum + car.deforestationArea, 0);
+
+            const hasSuppression = carMetrics.some(c => c.prodesHasSuppression);
+
+            // Armazenar métricas globais para o modal
+            window.environmentalMetrics = {
+                totalCarArea,
+                totalDeforestationArea,
+                totalDeforestationPercent: totalCarArea > 0 ? (totalDeforestationArea / totalCarArea) * 100 : 0,
+                hasSuppression,
+                carMetrics
+            };
+        });
+    }
+
+    // Mostrar modal de análise ambiental
+    function showEnvironmentalModal() {
+        if (!window.environmentalMetrics) return;
+
+        const metrics = window.environmentalMetrics;
+        const now = new Date();
+        const dateTime = now.toLocaleString('pt-BR');
+
+        let content = `
+            <h4>Análise Ambiental - ${dateTime}</h4>
+            <h5>Resumo Geral</h5>
+            <p><strong>Área Total CARs:</strong> ${metrics.totalCarArea.toFixed(2)} ha</p>
+            <p><strong>Área Total Desmatada (PRODES 2019-2025):</strong> ${metrics.totalDeforestationArea.toFixed(2)} ha</p>
+            <p><strong>Percentual Total Desmatado:</strong> ${metrics.totalDeforestationPercent.toFixed(2)}%</p>
+            ${metrics.hasSuppression ? '<p class="warning-message">Foram identificadas supressões de vegetação em ao menos um dos CARs (PRODES). Verifique os detalhes abaixo.</p>' : ''}
+            ${(!metrics.hasSuppression && metrics.totalDeforestationArea === 0) ? '<p class="success-message">Não foram identificados polígonos de desmatamento PRODES entre 2019 e 2025 dentro dos CARs analisados. Situação indicativa de conformidade.</p>' : ''}
+            
+            <h5>Detalhes por CAR</h5>
+        `;
+
+        metrics.carMetrics.forEach(car => {
+            content += `
+                <div style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+                    <h6>CAR: ${car.code}</h6>
+                    <p><strong>Área do CAR:</strong> ${car.area.toFixed(2)} ha</p>
+                    <p><strong>Área Desmatada (PRODES):</strong> ${car.deforestationArea.toFixed(2)} ha (${car.deforestationPercent.toFixed(2)}%)</p>
+                    
+                    ${car.prodesData ? `
+                        <p><strong>Julgamento PRODES:</strong> ${car.prodesData.julg_status || car.prodesData.julgamento || 'N/A'}</p>
+                        <p><strong>Resultados PRODES:</strong> ${car.prodesData.resultados || 'N/A'}</p>
+                        <p><strong>Soma Desmat:</strong> ${car.prodesData.soma_desmat != null ? car.prodesData.soma_desmat : 'N/A'}</p>
+                        <p><strong>Dentro da Tolerância:</strong> ${car.prodesData.dentro_tolerancia || 'N/A'}</p>
+                        <p><strong>Tolerância Aplicada:</strong> ${car.prodesData.tolerancia_aplicada || 'N/A'}</p>
+                        <p><strong>Bioma:</strong> ${car.prodesData.bioma || 'N/A'}</p>
+                    ` : '<p><strong>PRODES:</strong> Dados não disponíveis no JSON.</p>'}
+                    
+                    ${(() => {
+                        let overlapMessage = '<p class="warning-message"><strong>Sobreposição:</strong> Não</p>';
+                        if (car.hasOverlap) {
+                            const types = [];
+                            if (car.deforestationArea > 0) types.push('PRODES');
+                            if (car.hasUC) types.push('Unidades de Conservação');
+                            if (car.hasPublicForest) types.push('Florestas Públicas');
+                            let areaText = '';
+                            if (car.deforestationArea > 0) {
+                                areaText = ` - Área desmatada (PRODES): ${car.deforestationArea.toFixed(2)} ha`;
+                            }
+                            if (car.hasUC || car.hasPublicForest) {
+                                areaText += ' - Área sobreposta com UC/Florestas Públicas: Não calculada (geometrias inválidas)';
+                            }
+                            overlapMessage = `<p class="warning-message"><strong>Sobreposição:</strong> Sim - Identificada interseção com: ${types.join(', ')}${areaText}</p>`;
+                        }
+                        return overlapMessage;
+                    })()}
+                    
+                    ${car.properties ? `
+                        <p><strong>Status do Imóvel:</strong> ${car.properties.status_imovel || 'N/A'}</p>
+                        <p><strong>Data Atualização:</strong> ${car.properties.data_atualizacao || 'N/A'}</p>
+                        <p><strong>Área (SICAR):</strong> ${car.properties.area || 'N/A'} ha</p>
+                        <p><strong>Condição:</strong> ${car.properties.condicao || 'N/A'}</p>
+                        <p><strong>UF:</strong> ${car.properties.uf || 'N/A'}</p>
+                        <p><strong>Município:</strong> ${car.properties.municipio || 'N/A'}</p>
+                        <p><strong>Código Município:</strong> ${car.properties.cod_municipio || 'N/A'}</p>
+                        <p><strong>Módulos Fiscais:</strong> ${car.properties.modulos_fiscais || 'N/A'}</p>
+                        <p><strong>Tipo de Imóvel:</strong> ${car.properties.tipo_imovel || 'N/A'}</p>
+                    ` : '<p><strong>Dados do CAR:</strong> Não disponíveis.</p>'}
+                </div>
+            `;
+        });
+
+        content += `
+            <h5>Dados das Camadas</h5>
+            <p><strong>PRODES:</strong> ${prodesLayers.length} camadas carregadas</p>
+            <p><strong>Florestas Públicas:</strong> ${publicForestLayers.length} camadas carregadas</p>
+            <p><strong>Unidades de Conservação:</strong> ${ucLayers.length} camadas carregadas</p>
+            
+            <button id="export-pdf-btn" class="btn btn-primary" style="margin-top: 10px;">
+                <i class="ph-file-pdf"></i> Exportar PDF
+            </button>
+        `;
+
+        document.getElementById('environmental-content').innerHTML = content;
+        document.getElementById('environmental-modal').style.display = 'flex';
+
+        // Adicionar evento para exportar PDF
+        document.getElementById('export-pdf-btn').addEventListener('click', exportEnvironmentalPDF);
+    }
+
+    // Exportar análise ambiental para PDF
+    function exportEnvironmentalPDF() {
+        const jsPDFConstructor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!jsPDFConstructor) {
+            alert('Erro: jsPDF não carregado. Verifique se a biblioteca jsPDF está disponível.');
+            return;
+        }
+
+        const doc = new jsPDFConstructor();
+
+        const metrics = window.environmentalMetrics;
+        if (!metrics) {
+            alert('Nenhuma análise ambiental disponível para exportação. Execute a análise antes de exportar.');
+            return;
+        }
+
+        const now = new Date();
+        const dateTime = now.toLocaleString('pt-BR');
+
+        doc.setFontSize(16);
+        doc.text('Análise Ambiental', 20, 20);
+        doc.setFontSize(12);
+        doc.text(`Data/Hora: ${dateTime}`, 20, 30);
+
+        doc.setFontSize(14);
+        doc.text('Resumo Geral', 20, 50);
+        doc.setFontSize(12);
+        doc.text(`Área Total CARs: ${metrics.totalCarArea.toFixed(2)} ha`, 20, 60);
+        doc.text(`Área Total Desmatada (PRODES 2019-2025): ${metrics.totalDeforestationArea.toFixed(2)} ha`, 20, 70);
+        doc.text(`Percentual Total Desmatado: ${metrics.totalDeforestationPercent.toFixed(2)}%`, 20, 80);
+
+        let y = 100;
+
+        if (metrics.hasSuppression) {
+            doc.setTextColor(255, 165, 0); // Amarelo/laranja
+            const warningText = 'Foram identificadas supressões de vegetação em ao menos um dos CARs (PRODES). Verifique os detalhes do relatório.';
+            doc.text(warningText, 20, 90, { maxWidth: 170 });
+            doc.setTextColor(0, 0, 0); // Preto
+            y = 100;
+        } else if (metrics.totalDeforestationArea === 0) {
+            doc.setTextColor(0, 128, 0); // Verde
+            const successText = 'Não foram identificados polígonos de desmatamento PRODES entre 2019 e 2025 dentro dos CARs analisados. Situação indicativa de conformidade.';
+            doc.text(successText, 20, 90, { maxWidth: 170 });
+            doc.setTextColor(0, 0, 0); // Preto
+            y = 110;
+        } else {
+            y = 100;
+        }
+
+        if (!metrics.hasSuppression && metrics.totalDeforestationArea === 0) y = 110;
+        doc.setFontSize(14);
+        doc.text('Detalhes por CAR', 20, y);
+        y += 10;
+
+        metrics.carMetrics.forEach((car, index) => {
+            if (y > 250) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.setFontSize(12);
+            doc.text(`CAR: ${car.code}`, 20, y);
+            y += 10;
+            doc.text(`Área: ${car.area.toFixed(2)} ha`, 30, y);
+            y += 10;
+            doc.text(`Desmatamento: ${car.deforestationArea.toFixed(2)} ha (${car.deforestationPercent.toFixed(2)}%)`, 30, y);
+            y += 10;
+            if (car.prodesData) {
+                doc.text(`Resultados PRODES: ${car.prodesData.resultados || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+                doc.text(`Soma Desmat: ${car.prodesData.soma_desmat != null ? car.prodesData.soma_desmat : 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+                doc.text(`Dentro Tolerância: ${car.prodesData.dentro_tolerancia || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+                doc.text(`Tolerância Aplicada: ${car.prodesData.tolerancia_aplicada || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+                doc.text(`Bioma: ${car.prodesData.bioma || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+            }
+
+            if (car.hasOverlap) {
+                doc.setTextColor(255, 165, 0); // Amarelo/laranja
+                doc.text('SOBREPOSIÇÃO IDENTIFICADA (teste)', 30, y, { maxWidth: 150 });
+                doc.setTextColor(0, 0, 0);
+                y += 10;
+            }
+
+            doc.text(`UC: ${car.hasUC ? 'Identificada interseção com UC' : 'Não identificada interseção com UC'}`, 30, y, { maxWidth: 150 });
+            y += 10;
+            doc.text(`Floresta Pública: ${car.hasPublicForest ? 'Identificada interseção com Floresta Pública' : 'Não identificada interseção com Floresta Pública'}`, 30, y, { maxWidth: 150 });
+            y += 10;
+            if (car.properties) {
+                doc.text(`Status: ${car.properties.status_imovel || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+                doc.text(`UF: ${car.properties.uf || 'N/A'}, Município: ${car.properties.municipio || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+                doc.text(`Data Atualização: ${car.properties.data_atualizacao || 'N/A'}`, 30, y, { maxWidth: 150 });
+                y += 10;
+            }
+            y += 10;
+        });
+
+        const firstCarCode = carCodes.length > 0 ? carCodes[0] : 'XX-XXX';
+        doc.save(`analise ambiental CAR ${firstCarCode}.pdf`);
+    }
+
+    // Adicionar controle de camadas
+    function addLayerControl() {
+        if (layerControl) {
+            map.removeControl(layerControl);
+        }
+
+        const overlays = {};
+
+        if (carCodeLayers.length > 0) {
+            overlays['CARs por Código'] = L.layerGroup(carCodeLayers);
+        }
+        if (prodesLayers.length > 0) {
+            overlays['PRODES'] = L.layerGroup(prodesLayers);
+        }
+        if (publicForestLayers.length > 0) {
+            overlays['Florestas Públicas'] = L.layerGroup(publicForestLayers);
+        }
+        if (ucLayers.length > 0) {
+            overlays['Unidades de Conservação'] = L.layerGroup(ucLayers);
+        }
+
+        // Adicionar grupos ao mapa para que apareçam marcados no controle
+        Object.values(overlays).forEach(group => group.addTo(map));
+
+        layerControl = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+    }
 
     function almostEqual(a,b){ return Math.abs(a-b)<=TOL; }
 
@@ -2246,6 +3265,9 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
         map = L.map('map', { maxZoom: 22 }).setView([-15, -55], 4);
         console.log('Mapa criado:', map);
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 22 }).addTo(map);
+
+        // Inicializar controle de camadas
+        layerControl = L.control.layers().addTo(map);
 
         map.invalidateSize(); 
         console.log('Tamanho do mapa invalidado');
@@ -5907,10 +6929,12 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
         }
       }
       
-      if (carLayers.length > 0) {
+      const allCarLayers = [...carLayers, ...carCodeLayers];
+
+      if (allCarLayers.length > 0) {
           try {
               let allCarFeatures = [];
-              carLayers.forEach(carL => { allCarFeatures.push(...extractPolygonFeatures(carL)); });
+              allCarLayers.forEach(carL => { allCarFeatures.push(...extractPolygonFeatures(carL)); });
               
               if (allCarFeatures.length === 0) {
                   const msg = `AVISO: CARs carregados, mas não contêm polígonos válidos para validação.`;
@@ -6049,8 +7073,11 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
               if (isInitialValidation) initialErrors.push(logEntry);
           }
       } else {
+          // Se não há CARs carregados (arquivo ou busca por código), mostra aviso
           const carInput = document.getElementById('car-input');
-          if (carInput && carInput.files.length === 0 && glebaData.length > 0) {
+          const hasCarFile = carInput && carInput.files.length > 0;
+          const hasCarCode = carCodes && carCodes.length > 0;
+          if (!hasCarFile && !hasCarCode && glebaData.length > 0) {
               const msg = `AVISO: Validação de extravasamento e sobreposição NÃO realizada (CAR ausente).`;
               errors.push(msg);
               initialErrorListForVisualDisplay.push(msg);
@@ -6830,21 +7857,31 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
         document.getElementById('close-relatorio-modal').addEventListener('click', closeRelatorioModal);
         document.getElementById('close-relatorio-footer-btn').addEventListener('click', closeRelatorioModal);
         
+        // Event listener para fechar modal ambiental
+        document.getElementById('close-environmental-modal').addEventListener('click', () => {
+            document.getElementById('environmental-modal').style.display = 'none';
+        });
+        
+        // Event listener para buscar CAR por código
+        document.getElementById('search-car-btn').addEventListener('click', searchCarByCode);
+        
+        // Event listener para limpar CARs por código
+        document.getElementById('clear-code-car-btn').addEventListener('click', clearCodeCars);
+        
+        // Event listener para mostrar modal ambiental
+        document.getElementById('show-environmental-modal-btn').addEventListener('click', () => {
+            if (window.environmentalMetrics) {
+                showEnvironmentalModal();
+            } else {
+                alert('Nenhuma análise ambiental disponível. Carregue CARs por código primeiro.');
+            }
+        });
+        
         // Inicialização
         initializeMap();
-
-        // Inicializa módulo de validação ambiental (consulta CAR via API)
-        if (typeof EnvironmentalValidation !== 'undefined') {
-            EnvironmentalValidation.init({
-                map,
-                inputId: 'car-code-input',
-                buttonId: 'search-car-btn',
-                statusId: 'car-search-status'
-            });
-        }
-
         loadContractDataFromUI();
         validateContractData(contractData);
+        mmaDataPromise = loadMMAData(); // Carregar dados MMA
     });
 
   </script>
