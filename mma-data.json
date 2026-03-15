@@ -1,0 +1,10 @@
+{
+  "MS-XXXX": {
+    "resultados": "Exemplo de resultados",
+    "soma_desmat": 0.5,
+    "dentro_tolerancia": true,
+    "tolerancia_aplicada": 0.1,
+    "julg_status": "Conforme",
+    "bioma": "Cerrado"
+  }
+}
