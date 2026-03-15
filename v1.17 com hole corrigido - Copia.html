@@ -1329,6 +1329,47 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
         return null;
     }
 
+    // Buscar PRODES por bioma (consulta geral com bbox opcional e maxFeatures)
+    async function fetchProdesByBioma(bioma, bbox = null, maxFeatures = 100) {
+        const layerName = getProdesLayerNameFromBioma(bioma);
+        if (!layerName) {
+            console.warn('Bioma não suportado para PRODES:', bioma);
+            return null;
+        }
+
+        const baseUrl = `https://terrabrasilis.dpi.inpe.br/geoserver/${layerName}/ows`;
+        let wfsUrl = `${baseUrl}?service=WFS&version=1.0.0&request=GetFeature&typeName=${layerName}:yearly_deforestation&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=year>=2019 AND year<=2025`;
+
+        if (bbox) {
+            wfsUrl += `&bbox=${bbox}`;
+        }
+        if (maxFeatures && maxFeatures > 0) {
+            wfsUrl += `&maxFeatures=${maxFeatures}`;
+        }
+
+        try {
+            console.log('Buscando PRODES por bioma:', bioma, wfsUrl);
+            let response = await fetch(wfsUrl);
+            if (!response.ok) {
+                const altUrl = wfsUrl.replace('outputFormat=application/json', 'outputFormat=application/json; subtype=geojson');
+                console.log('Tentando PRODES alternativa por bioma:', altUrl);
+                response = await fetch(altUrl);
+            }
+
+            if (!response.ok) {
+                console.warn('Falha ao buscar PRODES por bioma:', response.status, response.statusText);
+                return null;
+            }
+
+            const geojson = await response.json();
+            console.log(`PRODES ${bioma}: retornou ${geojson.features ? geojson.features.length : 0} features`);
+            return geojson;
+        } catch (error) {
+            console.warn('Erro ao buscar PRODES por bioma:', error);
+            return null;
+        }
+    }
+
     // Buscar um único CAR
     async function fetchSingleCar(carCode) {
         const normalizedCode = normalizeCarCode(carCode);
@@ -1671,9 +1712,31 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
 
                 const processMetrics = (prodesGeoJSON) => {
                     if (prodesGeoJSON && prodesGeoJSON.features) {
+                        // Filtrar features PRODES que intersectam o CAR
+                        const intersectingFeatures = [];
                         prodesGeoJSON.features.forEach(prodesFeature => {
-                            carDeforestationArea += safeIntersectionArea(feature, prodesFeature);
+                            try {
+                                const cleanedProdesGeom = cleanGeometry(prodesFeature);
+                                if (turf.booleanIntersects(cleanedFeatureForOverlap, cleanedProdesGeom)) {
+                                    intersectingFeatures.push(prodesFeature);
+                                    carDeforestationArea += safeIntersectionArea(feature, prodesFeature);
+                                }
+                            } catch (error) {
+                                console.warn('Erro ao verificar interseção PRODES:', error);
+                            }
                         });
+
+                        // Adicionar apenas as features que intersectam ao mapa
+                        if (intersectingFeatures.length > 0) {
+                            const intersectingGeoJSON = { type: 'FeatureCollection', features: intersectingFeatures };
+                            const layer = L.geoJSON(intersectingGeoJSON, {
+                                style: { color: '#ff0000', weight: 1, fillOpacity: 0.8 },
+                                onEachFeature: (feat, layer) => {
+                                    layer.bindPopup(`<b>PRODES ${prodesData.bioma || 'N/A'}</b><br>Ano: ${feat.properties.year}<br>Área: ${feat.properties.area_ha} ha<br>UF: ${feat.properties.uf || 'N/A'}`);
+                                }
+                            });
+                            prodesLayers.push(layer);
+                        }
                     }
 
                     // Verificar interseção com UC
@@ -1728,14 +1791,15 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
                     });
                 };
 
-                if (!prodesData) {
-                    console.warn('Nenhum dado PRODES encontrado no JSON para', carCode, '; pulando consulta ao endpoint.');
+                if (!prodesData || !prodesData.bioma) {
+                    console.warn('Nenhum dado PRODES ou bioma encontrado no JSON para', carCode, '; pulando consulta ao endpoint.');
                     processMetrics(null);
                 } else {
-                    fetchProdesForCar(feature, prodesData)
+                    const bboxParam = getBboxParamFromFeature(feature);
+                    fetchProdesByBioma(prodesData.bioma, bboxParam, 500) // Limita a 500 features para performance
                         .then(processMetrics)
                         .catch(error => {
-                            console.warn('Erro ao buscar PRODES por CAR:', error);
+                            console.warn('Erro ao buscar PRODES por bioma:', error);
                             processMetrics(null);
                         });
                 }
