@@ -2087,8 +2087,9 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
         const listEl = document.getElementById('loaded-car-list');
         if (!listEl || !containerEl) return;
 
-        const codeItems = carCodes.map(code => `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> <span class="font-medium mr-1">CAR (código):</span> ${code}</li>`);
-        const fileItems = carFileNames.map(name => `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> <span class="font-medium mr-1">CAR (arquivo):</span> ${name}</li>`);
+        const escHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const codeItems = carCodes.map(code => `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> <span class="font-medium mr-1">CAR (código):</span> ${escHtml(code)}</li>`);
+        const fileItems = carFileNames.map(name => `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> <span class="font-medium mr-1">CAR (arquivo):</span> ${escHtml(name)}</li>`);
         const allItems = [...codeItems, ...fileItems];
 
         if (allItems.length === 0) {
@@ -9461,7 +9462,8 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
 
     // Handler unificado: carrega CAR por código (se houver) ou por arquivo (caso contrário)
     async function handleUnifiedCarLoad() {
-        const codeInput = (document.getElementById('car-code-input') ? document.getElementById('car-code-input').value : '').trim();
+        const codeInputEl = document.getElementById('car-code-input');
+        const codeInput = (codeInputEl ? codeInputEl.value : '').trim();
         const fileInput = document.getElementById('car-input');
         const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
 
