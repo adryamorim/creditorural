@@ -690,28 +690,13 @@ async function fetchProdesPolygonalByBbox(bboxParam) {
                     </label>
                     <input type="text" id="car-code-input" placeholder="Ex: MS-XXXX, MT-YYYY" class="p-2 border border-gray-300 rounded-md bg-white w-full"/>
                 </div>
-                <!-- Botão principal de Ação -->
+                <!-- Botão único de Ação (código tem prioridade sobre arquivo) -->
                 <div class="flex items-end">
                         <button id="search-car-btn" class="w-full action-button-width btn-highlight h-12">
-                             <i class="ph-search"></i> Buscar CARs
+                             <i class="ph-map-trifold"></i> Carregar CARs
                         </button>
                 </div>
             </div>
-
-            <!-- Área para listar os CARs carregados por código -->
-            <div id="code-car-list-container" class="mt-4 p-3 border border-gray-100 rounded-lg bg-gray-50 hidden">
-                    <h4 class="font-semibold mb-2 text-gray-700 flex items-center">
-                            <i class="ph-list-checks text-xl mr-2 text-green-600"></i> CARs por Código Carregados:
-                    </h4>
-                    <ul id="loaded-code-car-list" class="list-none ml-0 space-y-1 text-sm text-gray-600">
-                            <li>Nenhum CAR carregado.</li>
-                    </ul>
-            </div>
-
-            <!-- Botão Limpar CARs por Código -->
-            <button id="clear-code-car-btn" class="w-full md:w-48 btn-clear justify-start mt-2">
-                 <i class="ph-trash"></i> Limpar CARs por Código
-            </button>
 
             <!-- Linha 2: Upload CAR - MÚLTIPLO -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch mt-6">
@@ -724,20 +709,20 @@ async function fetchProdesPolygonalByBbox(bboxParam) {
                     </label>
                     <input type="file" id="car-input" accept=".kml,.zip" multiple class="p-2 border border-gray-300 rounded-md bg-white w-full"/>
                 </div>
-                <!-- Botão principal de Ação -->
-                <div class="flex items-end">
-                        <button id="upload-car-btn" class="w-full action-button-width btn-highlight h-12">
+                <!-- Botão upload oculto (substituído pelo botão unificado acima) -->
+                <div class="flex items-end" style="display:none!important">
+                        <button id="upload-car-btn" class="w-full action-button-width btn-highlight h-12" style="display:none">
                              <i class="ph-map-trifold"></i> Carregar CARs
                         </button>
                 </div>
             </div>
 
-            <!-- Botão Limpar CARs (Alinhado à esquerda em nova linha) -->
-            <button id="clear-car-btn" class="w-full md:w-48 btn-clear justify-start mt-2">
+            <!-- Botão Limpar CARs único (oculto inicialmente) -->
+            <button id="clear-car-btn" class="w-full md:w-48 btn-clear justify-start mt-2" style="display:none">
                  <i class="ph-trash"></i> Limpar CARs
             </button>
 
-            <!-- Área para listar os CARs carregados -->
+            <!-- Lista unificada de CARs carregados (código + arquivo) -->
             <div id="car-list-container" class="mt-4 p-3 border border-gray-100 rounded-lg bg-gray-50 hidden">
                     <h4 class="font-semibold mb-2 text-gray-700 flex items-center">
                             <i class="ph-list-checks text-xl mr-2 text-green-600"></i> CARs Carregados:
@@ -746,6 +731,13 @@ async function fetchProdesPolygonalByBbox(bboxParam) {
                             <li>Nenhum CAR carregado.</li>
                     </ul>
             </div>
+
+            <!-- Container legado (oculto) para compatibilidade com código existente -->
+            <div id="code-car-list-container" class="hidden" style="display:none!important">
+                    <ul id="loaded-code-car-list"></ul>
+            </div>
+            <!-- Botão legado oculto para compatibilidade -->
+            <button id="clear-code-car-btn" style="display:none"></button>
 
       <!-- Linha 2: Escolha Arquivo Glebas - Adicionado .xlsm -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
@@ -762,8 +754,8 @@ async function fetchProdesPolygonalByBbox(bboxParam) {
         </div>
       </div>
       
-      <!-- Botão Limpar Glebas (Alinhado à esquerda em nova linha) -->
-      <button id="clear-glebas-btn" class="w-full md:w-48 btn-clear justify-start mt-2">
+      <!-- Botão Limpar Glebas (oculto inicialmente) -->
+      <button id="clear-glebas-btn" class="w-full md:w-48 btn-clear justify-start mt-2" style="display:none">
          <i class="ph-trash"></i> Limpar Glebas
       </button>
 
@@ -1440,7 +1432,6 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
         }
 
         try {
-            // Mostrar loading
             document.getElementById('search-car-btn').disabled = true;
             document.getElementById('search-car-btn').innerHTML = '<i class="ph-spinner ph-spin"></i> Buscando CARs...';
 
@@ -1498,14 +1489,14 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
                 // Liberação imediata da interface
                 document.getElementById('car-code-input').value = '';
                 document.getElementById('search-car-btn').disabled = false;
-                document.getElementById('search-car-btn').innerHTML = '<i class="ph-search"></i> Buscar CARs';
+                document.getElementById('search-car-btn').innerHTML = '<i class="ph-map-trifold"></i> Carregar CARs';
                 document.getElementById('top-message-container').innerHTML =
                     `<div class="success-message"><i class="ph-check-circle-fill"></i> CAR carregado com sucesso, realizando análise ambiental...</div>`;
                 document.getElementById('show-environmental-modal-btn').disabled = true;
                 // Disparar análise ambiental em segundo plano
                 setTimeout(() => { triggerBackgroundEnvironmentalAnalysis(); }, 100);
                 // Atualizar mapa e controles
-                updateCarCodeList();
+                updateUnifiedCarListUI();
                 addLayerControl();
             }
 
@@ -1514,7 +1505,7 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
             alert('Erro ao buscar CARs. Verifique os códigos e tente novamente.');
         } finally {
             document.getElementById('search-car-btn').disabled = false;
-            document.getElementById('search-car-btn').innerHTML = '<i class="ph-search"></i> Buscar CARs';
+            document.getElementById('search-car-btn').innerHTML = '<i class="ph-map-trifold"></i> Carregar CARs';
         }
     }
 
@@ -2085,15 +2076,30 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
     }
 
 
-    // Atualizar lista de CARs por código
+    // Atualizar lista unificada de CARs (por código e por arquivo)
     function updateCarCodeList() {
-        const container = document.getElementById('code-car-list-container');
-        const list = document.getElementById('loaded-code-car-list');
+        updateUnifiedCarListUI();
+    }
 
-        if (carCodes.length > 0) {
-            container.classList.remove('hidden');
-            list.innerHTML = carCodes.map(code => `<li>${code}</li>`).join('');
+    // Renderiza a lista unificada de CARs carregados (por código e por arquivo)
+    function updateUnifiedCarListUI() {
+        const containerEl = document.getElementById('car-list-container');
+        const listEl = document.getElementById('loaded-car-list');
+        if (!listEl || !containerEl) return;
+
+        const escHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const codeItems = carCodes.map(code => `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> <span class="font-medium mr-1">CAR (código):</span> ${escHtml(code)}</li>`);
+        const fileItems = carFileNames.map(name => `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> <span class="font-medium mr-1">CAR (arquivo):</span> ${escHtml(name)}</li>`);
+        const allItems = [...codeItems, ...fileItems];
+
+        if (allItems.length === 0) {
+            containerEl.classList.add('hidden');
+            listEl.innerHTML = '<li>Nenhum CAR carregado.</li>';
+        } else {
+            containerEl.classList.remove('hidden');
+            listEl.innerHTML = allItems.join('');
         }
+        updateClearButtonsVisibility();
     }
 
     // Limpar dados ambientais
@@ -2953,8 +2959,7 @@ function showEnvironmentalModal() {
                 carCodes.splice(idx, 1);
                 carCodeFeatures.splice(idx, 1);
                 carProperties.splice(idx, 1);
-                updateCarListUI();
-                if (typeof updateCarCodeList === 'function') updateCarCodeList();
+                updateUnifiedCarListUI();
                 if (typeof updateValidationModal === 'function') updateValidationModal();
             }
         }
@@ -5112,6 +5117,7 @@ function addLayerControl() {
                 updatePoints();
                 updateLegend();
                 updateStatusPanel();
+                updateClearButtonsVisibility();
             }
         });
         
@@ -5201,6 +5207,7 @@ function addLayerControl() {
             updatePoints(); 
             updateLegend(); 
             updateStatusPanel();
+            updateClearButtonsVisibility();
         });
         
         map.on('mouseup', () => setTimeout(()=>{ validateAll(); updatePoints(); updateLegend(); updateStatusPanel(); },200));
@@ -5314,21 +5321,9 @@ function addLayerControl() {
         glebasToExclude = []; // Limpa a nova lista de exclusão
     }
 
-    // NOVO: Adiciona função para atualizar a lista de CARs na UI
+    // NOVO: Adiciona função para atualizar a lista de CARs na UI (delegada à lista unificada)
     function updateCarListUI() {
-        const listEl = document.getElementById('loaded-car-list');
-        const containerEl = document.getElementById('car-list-container');
-        if (!listEl || !containerEl) return;
-        
-        if (carFileNames.length === 0) {
-            containerEl.classList.add('hidden');
-            listEl.innerHTML = '<li>Nenhum CAR carregado.</li>';
-            return;
-        }
-        containerEl.classList.remove('hidden');
-        listEl.innerHTML = carFileNames.map((name, index) => 
-            `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> CAR ${index + 1}: ${name}</li>`
-        ).join('');
+        updateUnifiedCarListUI();
     }
 
     // NOVO: Adiciona função para atualizar a lista de Glebas na UI
@@ -5340,17 +5335,42 @@ function addLayerControl() {
         if (glebaFileNames.length === 0) {
             containerEl.classList.add('hidden');
             listEl.innerHTML = '<li>Nenhuma gleba carregada.</li>';
-            return;
-        }
-        containerEl.classList.remove('hidden');
-        listEl.innerHTML = glebaFileNames.map((name, index) => 
-            `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> Arquivo ${index + 1}: ${name}</li>`
-        ).join('');
+        } else {
+            containerEl.classList.remove('hidden');
+            listEl.innerHTML = glebaFileNames.map((name, index) => 
+                `<li class="flex items-center"><i class="ph-check-circle-fill text-green-500 mr-2"></i> Arquivo ${index + 1}: ${name}</li>`
+            ).join('');
             // Se modo de exclusão está ativo, reativar destaque/handler
             if (typeof deleteMode !== 'undefined' && deleteMode && typeof enableGlebaDeleteMode === 'function') enableGlebaDeleteMode();
+        }
+        updateClearButtonsVisibility();
+    }
+
+    // Controla visibilidade dos botões "Limpar CARs" e "Limpar Glebas"
+    function updateClearButtonsVisibility() {
+        const clearCarsBtn = document.getElementById('clear-car-btn');
+        const clearGlebasBtn = document.getElementById('clear-glebas-btn');
+        if (!clearCarsBtn || !clearGlebasBtn) return;
+
+        const hasCars = (carCodes && carCodes.length > 0) || (carFileNames && carFileNames.length > 0);
+        const hasGlebasLoaded = (glebaData && glebaData.length > 0) || (glebaFileNames && glebaFileNames.length > 0);
+        const hasManualDrawn = (leafletGlebaLayers && leafletGlebaLayers.length > 0);
+
+        const shouldShow = hasCars || hasGlebasLoaded || hasManualDrawn;
+
+        clearCarsBtn.style.display = shouldShow ? '' : 'none';
+        clearGlebasBtn.style.display = shouldShow ? '' : 'none';
     }
 
     function clearAllCarData(shouldClearInput = true) {
+        // Limpar camadas de CARs por código do mapa
+        if (carCodeLayers && carCodeLayers.length > 0) {
+            carCodeLayers.forEach(layer => { if (map && map.hasLayer(layer)) map.removeLayer(layer); });
+            carCodeLayers.length = 0;
+        }
+        carCodes.length = 0;
+        carCodeFeatures.length = 0;
+        carProperties.length = 0;
         // Limpar camadas ambientais (PRODES, UC, Floresta Pública, IBAMA)
         clearEnvironmentalData();
         // Limpa embargos IBAMA acumulados
@@ -5367,9 +5387,15 @@ function addLayerControl() {
         carFileNames.length = 0;
         if (shouldClearInput) {
             document.getElementById('car-input').value = '';
+            document.getElementById('car-code-input').value = '';
         }
-        updateCarListUI();
+        updateUnifiedCarListUI();
         drawGlebasFromData(glebaData);
+        // Desabilitar botão de análise ambiental
+        const envBtn = document.getElementById('show-environmental-modal-btn');
+        if (envBtn) envBtn.disabled = true;
+        // Atualizar controles de camadas
+        if (typeof addLayerControl === 'function') addLayerControl();
         // CORREÇÃO DE MENSAGEM: Usar o container do topo (#top-message-container)
         document.getElementById('top-message-container').innerHTML =
             `<div class="success-message">
@@ -5386,6 +5412,7 @@ function addLayerControl() {
         // Limpa embargos IBAMA acumulados
         allIbamaEmbargos = [];
         updateStatusPanel();
+        updateClearButtonsVisibility();
     }
 
     /**
@@ -5434,6 +5461,7 @@ function addLayerControl() {
             
         relatorio.meta.arquivos.glebas = [];
         updateGlebaListUI();
+        updateClearButtonsVisibility();
         logEvento('Glebas', 'limpeza', 'info', 'CLEAR_GLEBA_SUCCESS', 'Todas as glebas e dados de validação foram removidos.');
 
         // **Ação de Reset do Histórico**
@@ -6662,33 +6690,29 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
      */
         function clearCodeCars() {
             // Remover camadas do mapa
-            carCodeLayers.forEach(layer => map.removeLayer(layer));
+            if (carCodeLayers && carCodeLayers.length > 0) {
+                carCodeLayers.forEach(layer => { if (map && map.hasLayer(layer)) map.removeLayer(layer); });
+                carCodeLayers.length = 0;
+            }
             // Limpar arrays
-            carCodeLayers = [];
-            carCodes = [];
-            carCodeFeatures = [];
-            carProperties = [];
+            carCodes.length = 0;
+            carCodeFeatures.length = 0;
+            carProperties.length = 0;
             // Limpar dados ambientais
             clearEnvironmentalData();
-            // Atualizar lista
-            const container = document.getElementById('code-car-list-container');
-            const list = document.getElementById('loaded-code-car-list');
-            if (container && list) {
-                container.classList.add('hidden');
-                list.innerHTML = '<li>Nenhum CAR carregado.</li>';
-            }
-            updateCarCodeList();
+            // Atualizar lista unificada
+            updateUnifiedCarListUI();
             // Atualizar controles
-                addLayerControl();
+            addLayerControl();
         
-                // Desabilitar botão de análise ambiental
-                document.getElementById('show-environmental-modal-btn').disabled = true;
+            // Desabilitar botão de análise ambiental
+            document.getElementById('show-environmental-modal-btn').disabled = true;
         
-                // Mensagem
-                document.getElementById('top-message-container').innerHTML = 
-                        `<div class="success-message">
-                            <i class="ph-check-circle-fill"></i> CARs por código removidos.
-                        </div>`;
+            // Mensagem
+            document.getElementById('top-message-container').innerHTML = 
+                    `<div class="success-message">
+                        <i class="ph-check-circle-fill"></i> CARs por código removidos.
+                    </div>`;
         }
 
         // CORREÇÃO: Função alterada para NÃO remover as glebas existentes ao desenhar uma nova
@@ -9069,7 +9093,7 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
             document.getElementById('top-message-container').innerHTML = 
                 `<div class="error rounded-lg">AVISO: Nenhum CAR válido foi carregado.</div>`;
         }
-        updateCarListUI();
+        updateUnifiedCarListUI();
         updateStatusPanel();
         validateAll(true); 
     }
@@ -9413,18 +9437,18 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
             document.getElementById('environmental-modal').style.display = 'none';
         });
         
-        // Event listener para buscar CAR por código
-        document.getElementById('search-car-btn').addEventListener('click', searchCarByCode);
+        // Botão unificado de Carregar CARs (prioridade: código > arquivo)
+        document.getElementById('search-car-btn').addEventListener('click', handleUnifiedCarLoad);
         
-        // Event listener para limpar CARs por código
-        document.getElementById('clear-code-car-btn').addEventListener('click', clearCodeCars);
+        // Botão legado oculto (mantido para compatibilidade)
+        document.getElementById('clear-code-car-btn').addEventListener('click', () => clearAllCarData(true));
         
         // Event listener para mostrar modal ambiental
         document.getElementById('show-environmental-modal-btn').addEventListener('click', () => {
             if (window.environmentalMetrics) {
                 showEnvironmentalModal();
             } else {
-                alert('Nenhuma análise ambiental disponível. Carregue CARs por código primeiro.');
+                alert('Nenhuma análise ambiental disponível. Carregue CARs primeiro.');
             }
         });
         
@@ -9433,7 +9457,35 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
         loadContractDataFromUI();
         validateContractData(contractData);
         mmaDataPromise = loadMMAData(); // Carregar dados MMA
+        updateClearButtonsVisibility();
     });
+
+    // Handler unificado: carrega CAR por código (se houver) ou por arquivo (caso contrário)
+    async function handleUnifiedCarLoad() {
+        const codeInputEl = document.getElementById('car-code-input');
+        const codeInput = (codeInputEl ? codeInputEl.value : '').trim();
+        const fileInput = document.getElementById('car-input');
+        const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
+
+        if (codeInput) {
+            // Prioridade: código
+            await searchCarByCode();
+            return;
+        }
+
+        if (hasFiles) {
+            // Fallback: arquivo
+            processMultipleCarFiles(fileInput.files);
+            return;
+        }
+
+        // Nenhum input
+        document.getElementById('top-message-container').innerHTML =
+            `<div class="error rounded-lg">AVISO: Digite um código de CAR ou selecione um arquivo para carregar.</div>`;
+        setTimeout(() => {
+            document.getElementById('top-message-container').innerHTML = '';
+        }, 5000);
+    }
 
   </script>
 </body>
