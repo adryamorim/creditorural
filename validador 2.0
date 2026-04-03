@@ -922,6 +922,7 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
       <p><span class="legend-color" style="background-color: #8B0000; opacity: 0.8;"></span> MapBiomas Alertas (Vermelho Escuro)</p>
       <p><span class="legend-color" style="background-color: #008000; opacity: 0.8;"></span> Florestas Públicas (Verde)</p>
       <p><span class="legend-color" style="background-color: #0000ff; opacity: 0.8;"></span> Unidades de Conservação (Azul)</p>
+
     </div>
 
     <!-- Modal de Exportação -->
@@ -1243,7 +1244,7 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
             tolerancia_aplicada: 'N/A',
             bioma: 'CERRADO'
         }
-    };
+    }
 
     const HARD_CODED_OVERLAP_CARS = [
         'MS-5006903-20653795E9D942A39F0AC0227622148F',
@@ -1508,6 +1509,11 @@ class="p-2 border border-gray-300 rounded-md bg-white placeholder-muted"></texta
             document.getElementById('search-car-btn').innerHTML = '<i class="ph-map-trifold"></i> Carregar CARs';
         }
     }
+function extractCarCodeFromFilename(filename) {
+    const base = String(filename || '').toUpperCase();
+    const m = base.match(/\b(PR-\d{7}-[0-9A-F]{32})\b/);
+    return m ? m[1] : null;
+}
 
     // Normaliza código CAR: remove pontos e traços extras e garante formato 'UF-XXXXXXX-...'
     function normalizeCarCode(carCode) {
@@ -5413,6 +5419,56 @@ function addLayerControl() {
         allIbamaEmbargos = [];
         updateStatusPanel();
         updateClearButtonsVisibility();
+async function processMultipleCarFiles(files) {
+        document.getElementById('error-container').innerHTML = 
+            `<div class="error rounded-lg" style="background: #E0E7FF; color: #4F46E5; border-color: #A5B4FC;">Processando ${files.length} arquivo(s) CAR...</div>`;
+        
+        let processedCount = 0;
+
+        // Limpa apenas se não houver CARs carregados anteriormente
+        if (carLayers.length === 0) {
+            clearAllCarData(false); 
+            relatorio.meta.arquivos.car = []; 
+        }
+        
+        for (const file of files) {
+            // Verifica se o arquivo já foi carregado
+            if (!carFileNames.includes(file.name)) {
+                await processSingleCarFile(file);
+            } else {
+                console.log(`CAR "${file.name}" já foi carregado anteriormente.`);
+            }
+            processedCount++;
+            document.getElementById('error-container').innerHTML = 
+                `<div class="error rounded-lg" style="background: #E0E7FF; color: #4F46E5; border-color: #A5B4FC;">Processando... (${processedCount}/${files.length} concluídos)</div>`;
+        }
+        
+        relatorio.meta.arquivos.car = carFileNames; 
+        
+        if (carFeatureGroup && carFeatureGroup.getLayers().length > 0) {
+            // Garante que o CAR fique sempre na camada de baixo
+            carFeatureGroup.bringToBack();
+            const allBounds = carFeatureGroup.getBounds();
+            if(allBounds) {
+                map.fitBounds(allBounds, { padding: [20, 20] });
+                map.invalidateSize();
+            }
+            // Liberação imediata da interface
+            document.getElementById('car-input').value = '';
+            document.getElementById('top-message-container').innerHTML =
+                `<div class="success-message"><i class="ph-check-circle-fill"></i> CAR carregado com sucesso, realizando análise ambiental...</div>`;
+            document.getElementById('show-environmental-modal-btn').disabled = true;
+            // Disparar análise ambiental em segundo plano
+            setTimeout(() => { triggerBackgroundEnvironmentalAnalysis(); }, 100);
+        } else {
+            document.getElementById('top-message-container').innerHTML = 
+                `<div class="error rounded-lg">AVISO: Nenhum CAR válido foi carregado.</div>`;
+        }
+        updateUnifiedCarListUI();
+        updateStatusPanel();
+        validateAll(true); 
+    }
+   
     }
 
     /**
@@ -8971,29 +9027,44 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
             const currentCarIndex = carLayers.length;
             
             const success = (gj) => {
-                const newLayer = L.geoJSON(gj, { 
-                    style:{ color:'#b8860b', fillColor:'#ffd700', fillOpacity:0.35, weight:2, smoothFactor: 1.0 },
-                    onEachFeature: (feature, layer) => {
-                        layer.bindTooltip(`CAR ${currentCarIndex + 1}`, { permanent: false, direction: 'auto' });
-                    }
-                });
-                
-                if (newLayer.getLayers().length === 0) {
-                     document.getElementById('error-container').innerHTML = 
-                        `<div class="error rounded-lg">AVISO: ${f.name} lido, mas não contém polígonos válidos (CAR não carregado).</div>`;
-                     logEvento(f.name, 'carregamento', 'warning', 'CAR_NO_GEOM_WARN', `Arquivo CAR lido, mas não contém geometrias válidas.`);
-                } else {
-                    carFeatureGroup.addLayer(newLayer);
-                    carLayers.push(newLayer); 
-                    carFileNames.push(f.name);
-                    // Garante que o CAR fique sempre na camada de baixo
-                    carFeatureGroup.bringToBack();
-                    logEvento(f.name, 'carregamento', 'info', 'LOAD_CAR_OK', `Arquivo CAR carregado com sucesso.`);
-                }
-                
-                resolve();
-            };
-            
+    const newLayer = L.geoJSON(gj, { 
+        style:{ color:'#b8860b', fillColor:'#ffd700', fillOpacity:0.35, weight:2, smoothFactor: 1.0 },
+        onEachFeature: (feature, layer) => {
+            layer.bindTooltip(`CAR ${currentCarIndex + 1}`, { permanent: false, direction: 'auto' });
+        }
+    });
+
+    if (newLayer.getLayers().length === 0) {
+        document.getElementById('error-container').innerHTML = 
+            `<div class="error rounded-lg">AVISO: ${f.name} lido, mas não contém polígonos válidos (CAR não carregado).</div>`;
+        logEvento(f.name, 'carregamento', 'warning', 'CAR_NO_GEOM_WARN', `Arquivo CAR lido, mas não contém geometrias válidas.`);
+        resolve();
+        return;
+    }
+
+    carFeatureGroup.addLayer(newLayer);
+    carLayers.push(newLayer); 
+    carFileNames.push(f.name);
+
+    // === NOVO: alimentar features para análise ambiental (upload) ===
+    try {
+        window.analysisFeatures = window.analysisFeatures || [];
+
+        if (gj && gj.type === 'FeatureCollection' && Array.isArray(gj.features)) {
+            window.analysisFeatures.push(...gj.features);
+        } else if (gj && gj.type === 'Feature') {
+            window.analysisFeatures.push(gj);
+        }
+    } catch (e) {
+        console.warn('Falha ao alimentar window.analysisFeatures para upload CAR:', e);
+    }
+
+    // Garante que o CAR fique sempre na camada de baixo
+    carFeatureGroup.bringToBack();
+    logEvento(f.name, 'carregamento', 'info', 'LOAD_CAR_OK', `Arquivo CAR carregado com sucesso.`);
+
+    resolve();
+};
             const error = (msg) => {
                 document.getElementById('error-container').innerHTML = 
                     `<div class="error rounded-lg">ERRO ao carregar ${f.name}: ${msg}</div>`;
@@ -9097,7 +9168,7 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
         updateStatusPanel();
         validateAll(true); 
     }
-    
+   
     document.getElementById('upload-car-btn').addEventListener('click', ()=>{
       const files = document.getElementById('car-input').files;
       if(files.length === 0) {
