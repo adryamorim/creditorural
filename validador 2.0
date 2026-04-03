@@ -5432,11 +5432,20 @@ window.environmentalMetrics = null;
         allIbamaEmbargos = [];
         updateStatusPanel();
         updateClearButtonsVisibility();
-
+        carCodeFeatures.length = 0;
 async function processMultipleCarFiles(files) {
         document.getElementById('error-container').innerHTML = 
             `<div class="error rounded-lg" style="background: #E0E7FF; color: #4F46E5; border-color: #A5B4FC;">Processando ${files.length} arquivo(s) CAR...</div>`;
-        
+        // Upload deve validar pelo arquivo: zera qualquer resíduo do digitado
+carCodeFeatures = carCodeFeatures || [];
+carCodeFeatures.length = 0;
+
+// Zera features do upload para analisar somente os arquivos desta execução
+window.analysisFeatures = window.analysisFeatures || [];
+window.analysisFeatures.length = 0;
+
+// Também evita abrir/usar análise anterior
+window.environmentalMetrics = null;
         let processedCount = 0;
 
         // Limpa apenas se não houver CARs carregados anteriormente
@@ -9041,48 +9050,37 @@ if (tempGroupedData.length === 0 && nextGlebaKey) {
             const currentCarIndex = carLayers.length;
             
             const success = (gj) => {
-    const newLayer = L.geoJSON(gj, { 
-        style:{ color:'#b8860b', fillColor:'#ffd700', fillOpacity:0.35, weight:2, smoothFactor: 1.0 },
-        onEachFeature: (feature, layer) => {
-            layer.bindTooltip(`CAR ${currentCarIndex + 1}`, { permanent: false, direction: 'auto' });
-        }
-    });
-
-    if (newLayer.getLayers().length === 0) {
-        document.getElementById('error-container').innerHTML = 
-            `<div class="error rounded-lg">AVISO: ${f.name} lido, mas não contém polígonos válidos (CAR não carregado).</div>`;
-        logEvento(f.name, 'carregamento', 'warning', 'CAR_NO_GEOM_WARN', `Arquivo CAR lido, mas não contém geometrias válidas.`);
-        resolve();
-        return;
+  const newLayer = L.geoJSON(gj, { 
+    style:{ color:'#b8860b', fillColor:'#ffd700', fillOpacity:0.35, weight:2, smoothFactor: 1.0 },
+    onEachFeature: (feature, layer) => {
+      layer.bindTooltip(`CAR ${currentCarIndex + 1}`, { permanent: false, direction: 'auto' });
     }
-window.analysisFeatures = window.analysisFeatures || [];
-if (gj?.type === 'FeatureCollection' && Array.isArray(gj.features)) {
-  window.analysisFeatures.push(...gj.features);
-} else if (gj?.type === 'Feature') {
-  window.analysisFeatures.push(gj);
-}
-    carFeatureGroup.addLayer(newLayer);
-    carLayers.push(newLayer); 
-    carFileNames.push(f.name);
+  });
 
-    // === NOVO: alimentar features para análise ambiental (upload) ===
-    try {
-        window.analysisFeatures = window.analysisFeatures || [];
-
-        if (gj && gj.type === 'FeatureCollection' && Array.isArray(gj.features)) {
-            window.analysisFeatures.push(...gj.features);
-        } else if (gj && gj.type === 'Feature') {
-            window.analysisFeatures.push(gj);
-        }
-    } catch (e) {
-        console.warn('Falha ao alimentar window.analysisFeatures para upload CAR:', e);
-    }
-
-    // Garante que o CAR fique sempre na camada de baixo
-    carFeatureGroup.bringToBack();
-    logEvento(f.name, 'carregamento', 'info', 'LOAD_CAR_OK', `Arquivo CAR carregado com sucesso.`);
-
+  if (newLayer.getLayers().length === 0) {
+    document.getElementById('error-container').innerHTML = 
+      `<div class="error rounded-lg">AVISO: ${f.name} lido, mas não contém polígonos válidos (CAR não carregado).</div>`;
+    logEvento(f.name, 'carregamento', 'warning', 'CAR_NO_GEOM_WARN', `Arquivo CAR lido, mas não contém geometrias válidas.`);
     resolve();
+    return;
+  }
+
+  // Alimenta features para análise ambiental (upload)
+  window.analysisFeatures = window.analysisFeatures || [];
+  if (gj?.type === 'FeatureCollection' && Array.isArray(gj.features)) {
+    window.analysisFeatures.push(...gj.features);
+  } else if (gj?.type === 'Feature') {
+    window.analysisFeatures.push(gj);
+  }
+
+  carFeatureGroup.addLayer(newLayer);
+  carLayers.push(newLayer); 
+  carFileNames.push(f.name);
+
+  carFeatureGroup.bringToBack();
+  logEvento(f.name, 'carregamento', 'info', 'LOAD_CAR_OK', `Arquivo CAR carregado com sucesso.`);
+
+  resolve();
 };
             const error = (msg) => {
                 document.getElementById('error-container').innerHTML = 
